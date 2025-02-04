@@ -1,0 +1,92 @@
+# mollen-infrastructure/docker-compose.yml
+version: '3.8'
+
+services:
+  # Farm to School Website Frontend
+  website-frontend:
+    image: your-dockerhub/farmtoschool-frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://website-backend:3001
+      - NODE_OPTIONS=--max-old-space-size=4096
+    depends_on:
+      - website-backend
+    restart: unless-stopped
+
+  # Farm to School Website Backend
+  website-backend:
+    image: your-dockerhub/farmtoschool-backend:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_OPTIONS=--max-old-space-size=4096
+    restart: unless-stopped
+
+  # NodeBB Forum
+  forum:
+    build:
+      context: ../FarmToSchoolForum
+      dockerfile: Dockerfile
+    ports:
+      - "4567:4567"
+    environment:
+      - NODE_ENV=production
+      - url=http://localhost:4567
+      - database=mongo
+      - mongodb=mongodb://mongodb:27017/nodebb
+      - NODE_OPTIONS=--max-old-space-size=4096
+    volumes:
+      - forum-data:/usr/src/app/public/uploads
+      - forum-logs:/usr/src/app/logs
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
+  # MongoDB (shared between services)
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    command: ["mongod", "--bind_ip_all"]
+    restart: unless-stopped
+
+  # Vaultwarden
+  vaultwarden:
+    image: vaultwarden/server:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - vaultwarden-data:/data
+    environment:
+      - DATABASE_URL=postgresql://vaultwarden:${VAULTWARDEN_DB_PASSWORD}@postgres:5432/vaultwarden
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  # PostgreSQL for Vaultwarden
+  postgres:
+    image: postgres:15-alpine
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=vaultwarden
+      - POSTGRES_PASSWORD=${VAULTWARDEN_DB_PASSWORD}
+      - POSTGRES_DB=vaultwarden
+    restart: unless-stopped
+
+volumes:
+  mongodb-data:
+  mongodb-config:
+  forum-data:
+  forum-logs:
+  postgres-data:
+  vaultwarden-data:
+
+networks:
+  default:
+    name: mollen-network:wq

@@ -1,0 +1,39 @@
+# Mollen Infrastructure
+
+This repository contains the Docker Compose configuration for all Mollen services.
+
+## Services
+- Farm to School Website (Frontend + Backend)
+- NodeBB Forum
+- MongoDB
+- Vaultwarden
+- PostgreSQL
+
+## Setup
+1. Clone this repository
+2. Copy `.env.example` to `.env` and fill in secure passwords
+3. Clone service repositories in the same parent directory:
+   ```bash
+   cd ..
+   git clone https://github.com/your-username/FarmToSchoolWebsite
+   git clone https://github.com/your-username/FarmToSchoolForum
+   ```
+4. Start all services:
+   ```bash
+   docker-compose up -d
+   ```
+
+## Development
+- Each service's source code lives in its own repository
+- This repo only contains infrastructure configuration
+- Use docker-compose.override.yml for local development settings
+
+## First Run
+1. Set up NodeBB admin account:
+   ```bash
+   docker-compose exec forum ./nodebb setup
+   ```
+2. Initialize Vaultwarden database:
+   ```bash
+   docker-compose exec vaultwarden ./vaultwarden
+   ```
