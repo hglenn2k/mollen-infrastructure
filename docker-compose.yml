@@ -20,7 +20,7 @@ services:
   nodebb:
     # Using platform emulation to run x86_64 image on ARM64
     platform: linux/amd64
-    image: nodebb/docker:latest
+    image: elestio/nodebb:latest
     container_name: nodebb
     restart: always
     depends_on:
