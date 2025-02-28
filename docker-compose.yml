@@ -1,92 +1,65 @@
-# mollen-infrastructure/docker-compose.yml
-version: '3.8'
-
 services:
-  # Farm to School Website Frontend
-  website-frontend:
-    image: your-dockerhub/farmtoschool-frontend:latest
-    ports:
-      - "3000:3000"
+  mongo:
+    platform: linux/arm64
+    image: mongodb/mongodb-community-server:latest
+    container_name: mongo
+    restart: always
+    command: ["--bind_ip_all"]
     environment:
-      - REACT_APP_API_URL=http://website-backend:3001
-      - NODE_OPTIONS=--max-old-space-size=4096
+      MONGODB_INITDB_ROOT_USERNAME: root
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGODB_INITDB_DATABASE: nodebb
+      NODEBB_USER: nodebb
+      NODEBB_PASSWORD: ${MONGO_NODEBB_PASSWORD}
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - app-network
+
+  nodebb:
+    # Using platform emulation to run x86_64 image on ARM64
+    platform: linux/amd64
+    image: nodebb/docker:latest
+    container_name: nodebb
+    restart: always
     depends_on:
-      - website-backend
-    restart: unless-stopped
-
-  # Farm to School Website Backend
-  website-backend:
-    image: your-dockerhub/farmtoschool-backend:latest
-    ports:
-      - "3001:3001"
-    environment:
-      - PORT=3001
-      - NODE_OPTIONS=--max-old-space-size=4096
-    restart: unless-stopped
-
-  # NodeBB Forum
-  forum:
-    build:
-      context: ../FarmToSchoolForum
-      dockerfile: Dockerfile
+      - mongo
     ports:
       - "4567:4567"
+    volumes:
+      - nodebb_data:/usr/src/app/public/uploads
+      - nodebb_build:/usr/src/app/build
+      - nodebb_config:/opt/config
+      - ./nodebb-init.js:/usr/src/app/nodebb-init.js
     environment:
-      - NODE_ENV=production
-      - url=http://localhost:4567
-      - database=mongo
-      - mongodb=mongodb://mongodb:27017/nodebb
-      - NODE_OPTIONS=--max-old-space-size=4096
-    volumes:
-      - forum-data:/usr/src/app/public/uploads
-      - forum-logs:/usr/src/app/logs
-    depends_on:
-      - mongodb
-    restart: unless-stopped
-
-  # MongoDB (shared between services)
-  mongodb:
-    image: mongo:6.0
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data/db
-      - mongodb-config:/data/configdb
-    command: ["mongod", "--bind_ip_all"]
-    restart: unless-stopped
-
-  # Vaultwarden
-  vaultwarden:
-    image: vaultwarden/server:latest
-    ports:
-      - "8080:80"
-    volumes:
-      - vaultwarden-data:/data
-    environment:
-      - DATABASE_URL=postgresql://vaultwarden:${VAULTWARDEN_DB_PASSWORD}@postgres:5432/vaultwarden
-    depends_on:
-      - postgres
-    restart: unless-stopped
-
-  # PostgreSQL for Vaultwarden
-  postgres:
-    image: postgres:15-alpine
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=vaultwarden
-      - POSTGRES_PASSWORD=${VAULTWARDEN_DB_PASSWORD}
-      - POSTGRES_DB=vaultwarden
-    restart: unless-stopped
-
-volumes:
-  mongodb-data:
-  mongodb-config:
-  forum-data:
-  forum-logs:
-  postgres-data:
-  vaultwarden-data:
+      - DOMAIN=${DOMAIN}
+      - SUBDOMAIN_NODEBB=${SUBDOMAIN_NODEBB}
+      - PROTOCOL=${PROTOCOL}
+      - NODEBB_PORT=${NODEBB_PORT}
+      - NODEBB_SECRET=${NODEBB_SECRET}
+      - MONGO_HOST=${MONGO_HOST}
+      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_NODEBB_USERNAME=${MONGO_NODEBB_USERNAME}
+      - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD}
+      - MONGO_NODEBB_DATABASE=${MONGO_NODEBB_DATABASE}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+    entrypoint: ["/bin/bash", "-c", "chmod +x /usr/src/app/nodebb-init.js && node /usr/src/app/nodebb-init.js"]
+    networks:
+      - app-network
 
 networks:
-  default:
-    name: mollen-network:wq
+  app-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+    driver: local
+  nodebb_data:
+    driver: local
+  nodebb_build:
+    driver: local
+  nodebb_config:
+    driver: local
