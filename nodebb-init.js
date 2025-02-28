@@ -1,10 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * Simple NodeBB Initialization Script
- * Sets environment variables and runs NodeBB setup
- */
-
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -102,6 +97,7 @@ function runSetup() {
             env: process.env
         });
 
+        console.log('Setting up NodeBB...')
         setup.on('close', (code) => {
             if (code !== 0) {
                 console.error(`Setup process exited with code ${code}`);
@@ -109,8 +105,8 @@ function runSetup() {
             }
 
             console.log('NodeBB setup completed successfully');
+            console.log('Building NodeBB...');
 
-            // Build NodeBB
             const build = spawn('./nodebb', ['build'], { stdio: 'inherit' });
 
             build.on('close', (buildCode) => {
@@ -122,13 +118,11 @@ function runSetup() {
                 console.log('NodeBB build completed successfully');
                 console.log('Starting NodeBB...');
 
-                // Start NodeBB
-                const start = spawn('./nodebb', ['start'], { stdio: 'inherit' });
+                spawn('./nodebb', ['start'], { stdio: 'inherit' });
             });
         });
     }, 3000);  // 3-second delay
 }
 
-// Execute the setup
 setupEnvironment();
 runSetup();
