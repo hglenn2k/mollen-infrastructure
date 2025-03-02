@@ -7,10 +7,10 @@ services:
     command: ["--bind_ip_all"]
     environment:
       MONGODB_INITDB_ROOT_USERNAME: root
-      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
       MONGODB_INITDB_DATABASE: nodebb
       NODEBB_USER: nodebb
-      NODEBB_PASSWORD: ${MONGO_NODEBB_PASSWORD}
+      NODEBB_PASSWORD: ${MONGO_NODEBB_PASSWORD:-password}
     volumes:
       - mongo_data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
@@ -18,7 +18,6 @@ services:
       - app-network
 
   nodebb:
-    # Using platform emulation to run x86_64 image on ARM64
     platform: linux/amd64
     image: elestio/nodebb:latest
     container_name: nodebb
@@ -33,22 +32,55 @@ services:
       - nodebb_config:/opt/config
       - ./nodebb-init.js:/usr/src/app/nodebb-init.js
     environment:
-      - DOMAIN=${DOMAIN}
-      - SUBDOMAIN_NODEBB=${SUBDOMAIN_NODEBB}
-      - PROTOCOL=${PROTOCOL}
-      - NODEBB_PORT=${NODEBB_PORT}
-      - NODEBB_SECRET=${NODEBB_SECRET}
-      - MONGO_HOST=${MONGO_HOST}
-      - MONGO_PORT=${MONGO_PORT}
-      - MONGO_NODEBB_USERNAME=${MONGO_NODEBB_USERNAME}
-      - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD}
-      - MONGO_NODEBB_DATABASE=${MONGO_NODEBB_DATABASE}
+      - DOMAIN=${DOMAIN:-localhost}
+      - SUBDOMAIN_NODEBB=${SUBDOMAIN_NODEBB:-nodebb}
+      - PROTOCOL=${PROTOCOL:-http}
+      - NODEBB_PORT=${NODEBB_PORT:-4567}
+      - NODEBB_SECRET=${NODEBB_SECRET:-changeMe}
+      - MONGO_HOST=${MONGO_HOST:-mongo}
+      - MONGO_PORT=${MONGO_PORT:-27017}
+      - MONGO_NODEBB_USERNAME=${MONGO_NODEBB_USERNAME:-nodebb}
+      - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD:-password}
+      - MONGO_NODEBB_DATABASE=${MONGO_NODEBB_DATABASE:-nodebb}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-password}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
     entrypoint: ["/bin/bash", "-c", "chmod +x /usr/src/app/nodebb-init.js && node /usr/src/app/nodebb-init.js"]
     networks:
       - app-network
+
+  backend:
+    platform: linux/amd64
+    container_name: network_backend
+    image: hglenn2k/network_backend:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - EXPRESS_SESSION_SECRET={EXPRESS_SESSION_SECRET:-secret}
+      - MONGO_HOST=${MONGO_HOST:-mongo}
+      - MONGO_PORT=${MONGO_PORT:-27017}
+      - MONGO_ENV=${MONGO_ENV:-prod}
+      - EXPRESS_MONGO_USER=${EXPRESS_MONGO_USER:-nodebb}
+      - EXPRESS_MONGO_PASSWORD=${EXPRESS_MONGO_PASSWORD:-password}
+    networks:
+      - app-network
+    depends_on:
+      - mongo
+      - nodebb
+    entrypoint: [ "/bin/bash", "-c", "sleep 5 && node server.js" ]
+
+  frontend:
+    platform: linux/amd64
+    container_name: network_frontend
+    image: hglenn2k/network_frontend:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+    networks:
+      - app-network
+    depends_on:
+      - backend
 
 networks:
   app-network:
@@ -56,10 +88,6 @@ networks:
 
 volumes:
   mongo_data:
-    driver: local
   nodebb_data:
-    driver: local
   nodebb_build:
-    driver: local
   nodebb_config:
-    driver: local
