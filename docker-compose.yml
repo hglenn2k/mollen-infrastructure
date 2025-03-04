@@ -1,21 +1,28 @@
 services:
   mongo:
+    command: ["--bind_ip_all"]
     platform: linux/arm64
     image: mongodb/mongodb-community-server:latest
     container_name: mongo
+    ports:
+      - "27017:27017"
     restart: always
-    command: ["--bind_ip_all"]
     environment:
-      MONGODB_INITDB_ROOT_USERNAME: root
-      MONGODB_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-password}
-      MONGODB_INITDB_DATABASE: nodebb
-      NODEBB_USER: nodebb
-      NODEBB_PASSWORD: ${MONGO_NODEBB_PASSWORD:-password}
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-secureRootPassword123}
+      - MONGO_INITDB_DATABASE=${MONGO_NODEBB_DATABASE:-nodebb}
+      - MONGO_NODEBB_USERNAME=${MONGO_NODEBB_USERNAME:-nodebb}
+      - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD:-secureNodebbPassword456}
     volumes:
       - mongo_data:/data/db
-      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./mongo_init.js:/docker-entrypoint-initdb.d/mongo_init.js:ro
     networks:
       - app-network
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.adminCommand('ping')" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   nodebb:
     platform: linux/amd64
@@ -39,6 +46,7 @@ services:
       - NODEBB_SECRET=${NODEBB_SECRET:-changeMe}
       - MONGO_HOST=${MONGO_HOST:-mongo}
       - MONGO_PORT=${MONGO_PORT:-27017}
+      - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-undefined}
       - MONGO_NODEBB_USERNAME=${MONGO_NODEBB_USERNAME:-nodebb}
       - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD:-password}
       - MONGO_NODEBB_DATABASE=${MONGO_NODEBB_DATABASE:-nodebb}
@@ -56,7 +64,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - EXPRESS_SESSION_SECRET={EXPRESS_SESSION_SECRET:-secret}
+      - EXPRESS_SESSION_SECRET=${EXPRESS_SESSION_SECRET:-secret}
       - MONGO_HOST=${MONGO_HOST:-mongo}
       - MONGO_PORT=${MONGO_PORT:-27017}
       - MONGO_ENV=${MONGO_ENV:-prod}
@@ -76,7 +84,10 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=${NODE_ENV:-production}
+      - REACT_APP_DOMAIN=${REACT_APP_DOMAIN:-localhost}
+      - REACT_APP_DOMAIN_NO_HTTPS=${REACT_APP_DOMAIN_NO_HTTPS:-localhost}
+      - REACT_APP_EXPRESS_URL=${REACT_APP_EXPRESS_URL:-http://localhost:3001}
+      - REACT_APP_NODEBB_URL=${REACT_APP_NODEBB_URL:-http://localhost:4567}
     networks:
       - app-network
     depends_on:

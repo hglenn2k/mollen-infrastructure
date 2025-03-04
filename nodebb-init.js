@@ -1,5 +1,4 @@
-#!/usr/bin/env node
-
+console.log("NodeBB initializing...")
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -48,8 +47,8 @@ function setupEnvironment() {
 function createConfigFile() {
     const host = process.env.MONGO_HOST || 'mongo';
     const port = process.env.MONGO_PORT || '27017';
-    const username = process.env.MONGO_NODEBB_USERNAME || 'nodebb';
-    const password = process.env.MONGO_NODEBB_PASSWORD || '';
+    const username = 'root';
+    const password = process.env.MONGO_ROOT_PASSWORD || '';
     const database = process.env.MONGO_NODEBB_DATABASE || 'nodebb';
 
     const configPath = path.join(process.cwd(), 'config.json');
@@ -64,7 +63,7 @@ function createConfigFile() {
             "username": username,
             "password": password,
             "database": database,
-            "uri": `mongodb://${username}:${encodeURIComponent(password)}@${host}:${port}/${database}?authSource=${database}`
+            "uri": `mongodb://${username}:${password}@${host}:${port}/${database}?authSource=admin`
         }
     };
 
@@ -76,7 +75,7 @@ function createConfigFile() {
 function runSetup() {
     console.log('Setting up NodeBB with the following configuration:');
     console.log(`NodeBB URL: ${process.env.NODEBB_URL}`);
-    console.log(`MongoDB URI: mongodb://${process.env.MONGO_NODEBB_USERNAME}:${process.env.MONGO_NODEBB_PASSWORD}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/${process.env.MONGO_NODEBB_DATABASE}?authSource=${process.env.MONGO_NODEBB_DATABASE}`);
+    console.log(`MongoDB URI: mongodb://root:${process.env.MONGO_ROOT_PASSWORD}@${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/${process.env.MONGO_NODEBB_DATABASE}?authSource=admin`);
     console.log(`Admin Username: ${process.env.NODEBB_ADMIN_USERNAME}`);
 
     // Check if admin password is set
@@ -121,7 +120,7 @@ function runSetup() {
                 spawn('./nodebb', ['start'], { stdio: 'inherit' });
             });
         });
-    }, 3000);  // 3-second delay
+    }, 10000);  // 10-second delay
 }
 
 setupEnvironment();
