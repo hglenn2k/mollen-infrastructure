@@ -1,11 +1,11 @@
 services:
   mongo:
-    command: ["--bind_ip_all"]
+    command: [ "--bind_ip_all" ]
     platform: linux/arm64
     image: mongodb/mongodb-community-server:latest
     container_name: mongo
-    ports:
-      - "27017:27017"
+    expose:
+      - "27017"
     restart: always
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
@@ -15,7 +15,7 @@ services:
       - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD:-secureNodebbPassword456}
     volumes:
       - mongo_data:/data/db
-      - ./mongo_init.js:/docker-entrypoint-initdb.d/mongo_init.js:ro
+      - ${PWD}/entrypoints/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     networks:
       - app-network
     healthcheck:
@@ -31,29 +31,30 @@ services:
     restart: always
     depends_on:
       - mongo
-    ports:
-      - "4567:4567"
+    expose:
+      - "4567"
     volumes:
       - nodebb_data:/usr/src/app/public/uploads
       - nodebb_build:/usr/src/app/build
       - nodebb_config:/opt/config
-      - ./nodebb-init.js:/usr/src/app/nodebb-init.js
+      - ${PWD}/entrypoints/nodebb-init.js:/usr/src/app/entrypoints/nodebb-init.js:ro
     environment:
       - DOMAIN=${DOMAIN:-localhost}
-      - SUBDOMAIN_NODEBB=${SUBDOMAIN_NODEBB:-nodebb}
-      - PROTOCOL=${PROTOCOL:-http}
+      - SUBDOMAIN_NODEBB=${SUBDOMAIN_NODEBB:-forum}
+      - PROTOCOL=${PROTOCOL:-http://}
       - NODEBB_PORT=${NODEBB_PORT:-4567}
       - NODEBB_SECRET=${NODEBB_SECRET:-changeMe}
+      - NODEBB_BEARER=${NODEBB_BEARER:-TODO}
       - MONGO_HOST=${MONGO_HOST:-mongo}
       - MONGO_PORT=${MONGO_PORT:-27017}
       - MONGO_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-undefined}
       - MONGO_NODEBB_USERNAME=${MONGO_NODEBB_USERNAME:-nodebb}
-      - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD:-password}
+      - MONGO_NODEBB_PASSWORD=${MONGO_NODEBB_PASSWORD:-secureNodebbPassword456}
       - MONGO_NODEBB_DATABASE=${MONGO_NODEBB_DATABASE:-nodebb}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-password}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-secureAdminPassword789}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
-    entrypoint: ["/bin/bash", "-c", "chmod +x /usr/src/app/nodebb-init.js && node /usr/src/app/nodebb-init.js"]
+    entrypoint: [ "/bin/bash", "-c", "node /usr/src/app/entrypoints/nodebb-init.js" ]
     networks:
       - app-network
 
@@ -61,15 +62,33 @@ services:
     platform: linux/amd64
     container_name: network_backend
     image: hglenn2k/network_backend:latest
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     environment:
-      - EXPRESS_SESSION_SECRET=${EXPRESS_SESSION_SECRET:-secret}
+      - NODE_ENV=${NODE_ENV:-development}
+      - EXPRESS_SESSION_SECRET=${EXPRESS_SESSION_SECRET:-"19618cf7-d8b5-4795-af06-79f5c5019daf"}
       - MONGO_HOST=${MONGO_HOST:-mongo}
       - MONGO_PORT=${MONGO_PORT:-27017}
-      - MONGO_ENV=${MONGO_ENV:-prod}
-      - EXPRESS_MONGO_USER=${EXPRESS_MONGO_USER:-nodebb}
-      - EXPRESS_MONGO_PASSWORD=${EXPRESS_MONGO_PASSWORD:-password}
+      - MONGO_ENV=${MONGO_ENV:-test}
+      - EXPRESS_MONGO_USER=${EXPRESS_MONGO_USER:-docker_dev}
+      - EXPRESS_MONGO_PASSWORD=${EXPRESS_MONGO_PASSWORD:-TWe2gE5ksZqsKO4z}
+      - GOOGLE_SERVICE_ACCOUNT_TYPE=${GOOGLE_SERVICE_ACCOUNT_TYPE:-service_account}
+      - GOOGLE_SERVICE_ACCOUNT_PROJECT_ID=${GOOGLE_SERVICE_ACCOUNT_PROJECT_ID:-fts-resource-fetch}
+      - GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_ID=${GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY_ID}
+      - GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=${GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY}
+      - GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL}
+      - GOOGLE_SERVICE_ACCOUNT_CLIENT_ID=${GOOGLE_SERVICE_ACCOUNT_CLIENT_ID}
+      - GOOGLE_SERVICE_ACCOUNT_AUTH_URI=${GOOGLE_SERVICE_ACCOUNT_AUTH_URI}
+      - GOOGLE_SERVICE_ACCOUNT_TOKEN_URI=${GOOGLE_SERVICE_ACCOUNT_TOKEN_URI}
+      - GOOGLE_SERVICE_ACCOUNT_AUTH_PROVIDER_CERT_URL=${GOOGLE_SERVICE_ACCOUNT_AUTH_PROVIDER_CERT_URL}
+      - GOOGLE_SERVICE_ACCOUNT_CLIENT_CERT_URL=${GOOGLE_SERVICE_ACCOUNT_CLIENT_CERT_URL}
+      - GOOGLE_SPREADSHEET_ID=${GOOGLE_SPREADSHEET_ID}
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_SMTP_SERVER=${BREVO_SMTP_SERVER}
+      - BREVO_SMTP_PORT=${BREVO_SMTP_PORT}
+      - BREVO_SMTP_LOGIN=${BREVO_SMTP_LOGIN}
+      - BREVO_SMTP_PASSWORD=${BREVO_SMTP_PASSWORD}
+      - NODEBB_BEARER=${NODEBB_BEARER}
     networks:
       - app-network
     depends_on:
@@ -81,17 +100,44 @@ services:
     platform: linux/amd64
     container_name: network_frontend
     image: hglenn2k/network_frontend:latest
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-true}
       - REACT_APP_DOMAIN=${REACT_APP_DOMAIN:-localhost}
       - REACT_APP_DOMAIN_NO_HTTPS=${REACT_APP_DOMAIN_NO_HTTPS:-localhost}
-      - REACT_APP_EXPRESS_URL=${REACT_APP_EXPRESS_URL:-http://localhost:3001}
-      - REACT_APP_NODEBB_URL=${REACT_APP_NODEBB_URL:-http://localhost:4567}
+      - REACT_APP_EXPRESS_URL=/api/express #todo .env
+      - REACT_APP_NODEBB_URL=/api/nodebb #todo .env
     networks:
       - app-network
     depends_on:
       - backend
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: always
+    depends_on:
+      - frontend
+      - backend
+      - nodebb
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/templates:/tmp/nginx-templates:ro
+      - ./entrypoints/nginx-init.sh:/docker-entrypoint.d/16-nginx-init.sh:ro # '16' is important for script execution order
+      - ${SSL_CERT_PATH:-./nginx/ssl}:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
+      - nginx_run:/var/run
+    networks:
+      - app-network
+    environment:
+      - NGINX_HOST=${DOMAIN:-localhost}
+      - NGINX_PORT=${NGINX_HTTP_PORT:-80}
+      - NGINX_HTTPS_PORT=${NGINX_HTTPS_PORT:-443}
+      - DEPLOYMENT_ENV=${DEPLOYMENT_ENV:-local}
 
 networks:
   app-network:
@@ -102,3 +148,5 @@ volumes:
   nodebb_data:
   nodebb_build:
   nodebb_config:
+  nginx_cache:
+  nginx_run:
