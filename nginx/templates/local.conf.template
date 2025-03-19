@@ -39,7 +39,7 @@ server {
     }
 
     # Backend API endpoint
-    location /express-api/ {
+    location /api/express/ {
         proxy_pass http://backend:3001/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -48,7 +48,7 @@ server {
     }
 
     # NodeBB Forum API endpoint
-    location /forum-api/ {
+    location /api/nodebb/ {
         proxy_pass http://nodebb:4567/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
