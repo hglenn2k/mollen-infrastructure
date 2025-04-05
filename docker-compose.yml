@@ -6,6 +6,8 @@ services:
     container_name: mongo
     expose:
       - "27017"
+    ports:
+      - "27017:27017"  # Remove in production
     restart: always
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
@@ -74,6 +76,7 @@ services:
       - MONGO_PORT=${MONGO_PORT:-27017}
       - MONGO_ENV=${MONGO_ENV:-DEV}
       - MONGO_LOCAL=${MONGO_LOCAL:-true}
+      - MONGO_NODEBB_DATABASE=${MONGO_NODEBB_DATABASE:-nodebb}
       - EXPRESS_MONGO_USER=${EXPRESS_MONGO_USER:-root}
       - EXPRESS_MONGO_PASSWORD=${MONGO_ROOT_PASSWORD}
       - GOOGLE_SERVICE_ACCOUNT_TYPE=${GOOGLE_SERVICE_ACCOUNT_TYPE}
