@@ -5,9 +5,9 @@ const path = require('path');
 
 // Construct the NodeBB URL
 function constructUrl() {
-    const domain = process.env.DOMAIN || 'localhost';
-    const subdomain = process.env.SUBDOMAIN_NODEBB || '';
     const protocol = process.env.PROTOCOL || 'http://';
+    const subdomain = process.env.SUBDOMAIN_NODEBB || 'forum';
+    const domain = process.env.DOMAIN || 'localhost';
     const port = process.env.NODEBB_PORT || '4567';
 
     let url = protocol;
@@ -34,7 +34,7 @@ function setupEnvironment() {
     process.env.NODEBB_URL = constructUrl();
 
     // NodeBB secret
-    process.env.NODEBB_SECRET = process.env.NODEBB_SECRET || '';
+    process.env.SESSION_COOKIE_SECRET = process.env.SESSION_COOKIE_SECRET || '';
 
     // Admin account
     process.env.NODEBB_ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
@@ -55,7 +55,7 @@ function createConfigFile() {
 
     const config = {
         "url": process.env.NODEBB_URL,
-        "secret": process.env.NODEBB_SECRET,
+        "secret": process.env.SESSION_COOKIE_SECRET,
         "database": "mongo",
         "mongo": {
             "host": host,
